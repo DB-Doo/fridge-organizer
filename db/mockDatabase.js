@@ -31,8 +31,6 @@ export const saveItems = async () => {
   }
 };
 
-// ... (rest of your addItem, updateItem, and deleteItem functions, make sure to call saveItems after each modification)
-
 let currentId = 4;
 
 export const addItem = async (item) => {
