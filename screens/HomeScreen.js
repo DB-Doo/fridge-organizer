@@ -1,5 +1,5 @@
 // HomeScreen.js
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,41 +7,53 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Alert,
+  Animated,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
-import { Swipeable } from "react-native-gesture-handler";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 import { loadItems, getItems, deleteItem } from "../db/mockDatabase";
 
 const HomeScreen = () => {
+  const navigation = useNavigation(); // Use the useNavigation hook
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   useFocusEffect(
     React.useCallback(() => {
       const fetchData = async () => {
-        await loadItems(); // Load items from mock database
-        setItems(getItems() || []); // Get items using getItems and set to state
+        await loadItems();
+        setItems(getItems() || []);
       };
-
       fetchData();
     }, [])
   );
 
   const handleDeleteItem = async (id) => {
     await deleteItem(id);
-    // Clone the items array to trigger a state update and force a re-render
     setItems([...getItems()]);
   };
 
   const renderRightActions = (progress, dragX, item) => {
+    const trans = progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [200, 0], // Adjust this based on the combined width of your buttons
+    });
+  
     return (
-      <TouchableOpacity
-        onPress={() => handleDeleteItem(item.id)}
-        style={styles.deleteButton}
-      >
-        <Text style={styles.deleteButtonText}>Delete</Text>
-      </TouchableOpacity>
+      <Animated.View style={{ flexDirection: 'row', transform: [{ translateX: trans }] }}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('EditItem', { itemId: item.id })}
+          style={[styles.actionButton, { backgroundColor: 'blue' }]}
+        >
+          <Text style={styles.actionButtonText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => handleDeleteItem(item.id)}
+          style={[styles.actionButton, { backgroundColor: 'red' }]}
+        >
+          <Text style={styles.actionButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </Animated.View>
     );
   };
 
@@ -49,25 +61,18 @@ const HomeScreen = () => {
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const renderItem = ({ item }) => {
-    return (
-      <Swipeable
-        renderRightActions={(progress, dragX) =>
-          renderRightActions(progress, dragX, item)
-        }
-        onSwipeableOpen={() => {
-          if (item.swipeDirection === "right") {
-            handleDeleteItem(item.id); // Trigger deletion when swipe action is fully opened
-          }
-        }}
-      >
-        <View style={styles.itemContainer}>
-          <Text style={styles.itemName}>{item.name}</Text>
-          <Text>{`Quantity: ${item.quantity}, Expires on: ${item.expirationDate}`}</Text>
-        </View>
-      </Swipeable>
-    );
-  };
+  const renderItem = ({ item }) => (
+    <Swipeable
+      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
+      friction={2} // Adjust the friction to control the swipe sensitivity
+      rightThreshold={40} // Adjust this to control how far the user must swipe to fully reveal the delete button
+    >
+      <View style={styles.itemContainer}>
+        <Text style={styles.itemName}>{item.name}</Text>
+        <Text>{`Quantity: ${item.quantity}, Expires on: ${item.expirationDate}`}</Text>
+      </View>
+    </Swipeable>
+  );
 
   return (
     <View style={styles.container}>
@@ -80,13 +85,12 @@ const HomeScreen = () => {
       <FlatList
         data={filteredItems}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
       />
     </View>
   );
 };
 
-// Styles for the HomeScreen components
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -107,14 +111,13 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 5,
   },
-  deleteButton: {
-    backgroundColor: "red",
+  actionButton: {
     justifyContent: "center",
     alignItems: "center",
-    width: 100,
+    width: 100, // Define the width of your action buttons here
     height: "100%",
   },
-  deleteButtonText: {
+  actionButtonText: {
     color: "white",
     fontWeight: "bold",
   },

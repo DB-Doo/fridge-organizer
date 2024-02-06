@@ -54,4 +54,11 @@ export const deleteItem = async (id) => {
     await saveItems();
   }
 };
+
 export const getItems = () => items;
+
+// Add this function to get an item by its ID
+export const getItemById = async (id) => {
+  await loadItems(); // Ensure the items list is loaded
+  return items.find((item) => item.id === id) || null;
+};
